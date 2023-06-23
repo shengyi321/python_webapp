@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# __author__ = 'Michael Liao'
-# https://github.com/michaelliao/awesome-python3-webapp/blob/day-04/www/models.py
-
-__author__ = 'Monstersh'
+__author__ = 'Michael Liao'
 
 import asyncio, os, inspect, logging, functools
 
@@ -40,17 +37,14 @@ def post(path):
         return wrapper
     return decorator
 
-# 如果函数参数包含关键字参数并且关键字参数值为空则返回关键字参数的元组
 def get_required_kw_args(fn):
     args = []
-    #inspect是检查模块，用于进行各种现场检查
     params = inspect.signature(fn).parameters
     for name, param in params.items():
         if param.kind == inspect.Parameter.KEYWORD_ONLY and param.default == inspect.Parameter.empty:
             args.append(name)
     return tuple(args)
 
-# 如果有关键字参数则取出返回元组
 def get_named_kw_args(fn):
     args = []
     params = inspect.signature(fn).parameters
@@ -59,23 +53,18 @@ def get_named_kw_args(fn):
             args.append(name)
     return tuple(args)
 
-# 判断函数是否有关键字参数，如果有则返回True
 def has_named_kw_args(fn):
     params = inspect.signature(fn).parameters
     for name, param in params.items():
         if param.kind == inspect.Parameter.KEYWORD_ONLY:
             return True
 
-# 判断函数是否有字典参数，如果有则返回True
 def has_var_kw_arg(fn):
     params = inspect.signature(fn).parameters
     for name, param in params.items():
         if param.kind == inspect.Parameter.VAR_KEYWORD:
             return True
 
-# 判断函数的参数有没有request，如果有request参数则把found赋值为True并结束本次循环继续判断其他参数
-# 如果其他参数不是可变参数，也不是关键字参数，也不是字典参数则抛出错误
-# 例如响应函数index(request)只有一个参数request所以在执行第一个if以后就没有参数循环了，退出整个循环返回found的值为True
 def has_request_arg(fn):
     sig = inspect.signature(fn)
     params = sig.parameters
@@ -99,21 +88,21 @@ class RequestHandler(object):
         self._named_kw_args = get_named_kw_args(fn)
         self._required_kw_args = get_required_kw_args(fn)
 
-    async def __call__(self, request):
+    @asyncio.coroutine
+    def __call__(self, request):
         kw = None
         if self._has_var_kw_arg or self._has_named_kw_args or self._required_kw_args:
             if request.method == 'POST':
                 if not request.content_type:
                     return web.HTTPBadRequest('Missing Content-Type.')
                 ct = request.content_type.lower()
-                #startwith用来判断字符串是否以指定字符串开始
                 if ct.startswith('application/json'):
-                    params = await request.json()
+                    params = yield from request.json()
                     if not isinstance(params, dict):
                         return web.HTTPBadRequest('JSON body must be object.')
                     kw = params
                 elif ct.startswith('application/x-www-form-urlencoded') or ct.startswith('multipart/form-data'):
-                    params = await request.post()
+                    params = yield from request.post()
                     kw = dict(**params)
                 else:
                     return web.HTTPBadRequest('Unsupported Content-Type: %s' % request.content_type)
@@ -147,7 +136,7 @@ class RequestHandler(object):
                     return web.HTTPBadRequest('Missing argument: %s' % name)
         logging.info('call with args: %s' % str(kw))
         try:
-            r = await self._func(**kw)
+            r = yield from self._func(**kw)
             return r
         except APIError as e:
             return dict(error=e.error, data=e.data, message=e.message)

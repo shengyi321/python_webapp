@@ -4,10 +4,8 @@
 '''
 Models for user, blog, comment.
 '''
-# __author__ = 'Michael Liao'
-# https://github.com/michaelliao/awesome-python3-webapp/blob/day-04/www/models.py
 
-__author__ = 'Monstersh'
+__author__ = 'Michael Liao'
 
 import time, uuid
 
